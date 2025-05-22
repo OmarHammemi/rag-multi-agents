@@ -25,7 +25,7 @@
 │   │   ├── car_metadata.json
 │   │   ├── country_faiss.index
 │   │   └── country_metadata.json
-│   └── raw_data
+│   └── raw_data_and_data_cleaning
 │       ├── car_chunks.jsonl
 │       ├── cars_dataset.csv
 │       ├── country_chunks.jsonl
