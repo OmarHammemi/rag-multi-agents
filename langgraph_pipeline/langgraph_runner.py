@@ -1,89 +1,87 @@
-import sys
+# agent_system.py
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from typing import TypedDict
-from langgraph.graph import StateGraph
+import sys
+from typing import Dict, Any
+from dotenv import load_dotenv
 
-# Import agents and router
+# Set up paths
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+sys.path.append(project_root)
+
+# Load environment variables
+load_dotenv(os.path.join(project_root, '.env'))
+
+# Import your existing components
 from agents.car_agent import car_agent
 from agents.country_agent import country_agent
 from agents.math_agent import math_agent
 from utils.router import route_query
 
-# === Define shared state ===
-class RAGState(TypedDict):
-    user_query: str
-    answer: str
-
-# === Router Node ===
-def router_node(state: RAGState) -> dict:
-    task = route_query(state["user_query"])
-    print(f"[Router] Task: {task}")
-    return {
-        # Return the next node in the 'next' key
-        "next": {
-            "car": "car_agent",
-            "country": "country_agent",
-            "math": "math_agent"
-        }.get(task, "fallback")
-    }
-
-# === Agent Nodes ===
-# These should be modified in their respective files to return dicts
-# For example in car_agent.py:
-# def car_agent(state: RAGState) -> dict:
-#     answer = "Your car answer here"
-#     return {"answer": answer}
-
-# === Fallback handler ===
-def fallback_node(state: RAGState) -> dict:
-    return {"answer": "❌ Sorry, I couldn't understand your question."}
-
-# === Build LangGraph ===
-def build_langgraph():
-    graph = StateGraph(RAGState)
-
-    # Add nodes
-    graph.add_node("router", router_node)
-    graph.add_node("car_agent", car_agent)
-    graph.add_node("country_agent", country_agent)
-    graph.add_node("math_agent", math_agent)
-    graph.add_node("fallback", fallback_node)
-
-    # Entry point
-    graph.set_entry_point("router")
-
-    # Conditional edges based on router's 'next' output
-    graph.add_conditional_edges(
-        "router",
-        lambda state: state["next"],
-        {
-            "car_agent": "car_agent",
-            "country_agent": "country_agent",
-            "math_agent": "math_agent",
-            "fallback": "fallback"
+class AgentSystem:
+    def __init__(self):
+        """Initialize the agent system with all available agents"""
+        self.agents = {
+            'car': car_agent,
+            'country': country_agent,
+            'math': math_agent
         }
-    )
+    
+    def process_query(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Process the user query using the router to select the appropriate agent
+        """
+        query = state.get("user_query", "").strip()
+        if not query:
+            state["answer"] = "❌ Please provide a valid query."
+            return state
+        
+        # Use your existing router to determine the agent
+        agent_type = route_query(query)
+        
+        if agent_type == "unknown":
+            # Fallback checks for country names
+            from agents.country_agent import country_metadata
+            for entry in country_metadata:
+                if entry["id"].lower() in query.lower():
+                    agent_type = "country"
+                    break
+            
+            if agent_type == "unknown":
+                state["answer"] = "❌ I couldn't determine what you're asking about. Please try being more specific."
+                return state
+        
+        try:
+            # Get the appropriate agent function
+            agent_func = self.agents.get(agent_type)
+            if not agent_func:
+                state["answer"] = f"❌ No agent available to handle {agent_type} queries."
+                return state
+            
+            # Process with the selected agent (maintaining all your existing agent logic)
+            return agent_func(state)
+        
+        except Exception as e:
+            state["answer"] = f"❌ Error processing your query: {str(e)}"
+            return state
 
-    # Define end points
-    graph.set_finish_point("car_agent")
-    graph.set_finish_point("country_agent")
-    graph.set_finish_point("math_agent")
-    graph.set_finish_point("fallback")
-
-    return graph.compile()
-
-# === Example Usage ===
+# === Example usage ===
 if __name__ == "__main__":
-    rag_bot = build_langgraph()
-
-    examples = [
-        "Tell me about a coupe with high horsepower",
-        "What is the capital of Tunisia?",
-        "What is (6 + 4) squared minus 3?",
-        "What's the weather in Tokyo today?"
+    agent_system = AgentSystem()
+    
+    test_queries = [
+        "What's the fastest car with good mileage?",
+        "What is the capital of France?",
+        "Calculate 25 plus 37 all divided by 2",
+        "Tell me about Toyota Washington",
+        "Population of Japan",
+        "What is 5 to the power of 3?",
+        "Tell me about Tunisia",  # Will trigger country fallback
+        "What's the weather today?"  # Will return unknown
     ]
-
-    for query in examples:
-        result = rag_bot.invoke({"user_query": query})
-        print(f"\n🔍 Query: {query}\n💬 Answer: {result['answer']}")
+    
+    for query in test_queries:
+        print(f"\nQuery: {query}")
+        state = {"user_query": query}
+        result = agent_system.process_query(state)
+        print("Answer:", result["answer"])
