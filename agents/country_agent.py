@@ -100,8 +100,3 @@ def country_agent(state: dict) -> dict:
 
     return state
 
-# === Test Example ===
-if __name__ == "__main__":
-    state = {"user_query": "What is the capital of Tunisia?"}
-    result = country_agent(state)
-    print(result["answer"])

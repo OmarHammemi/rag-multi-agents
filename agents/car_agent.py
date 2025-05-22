@@ -134,19 +134,3 @@ def car_agent(state: dict) -> dict:
     except Exception as e:
         state["answer"] = f"❌ Error processing your request: {str(e)}"
     return state
-
-# === Testing ===
-if __name__ == "__main__":
-    test_cases = [
-        {"query": "Find 2 safe family cars", "expected": 2},
-        {"query": "Show me the fastest convertible", "expected": 1},
-        {"query": "List 3 electric vehicles with good mileage", "expected": 3}
-    ]
-    
-    for test in test_cases:
-        print(f"\nTesting: '{test['query']}'")
-        state = {"user_query": test["query"]}
-        result = car_agent(state)
-        count = len(result["answer"].split("\n\n")) if "\n\n" in result["answer"] else 1
-        print(f"Returned {count} results")
-        print(result["answer"])

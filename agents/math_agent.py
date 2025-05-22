@@ -89,19 +89,3 @@ def is_math_problem(query: str) -> bool:
     ]
     return (any(c.isdigit() for c in query) and 
             any(term in query.lower() for term in math_keywords))
-
-if __name__ == "__main__":
-    test_queries = [
-        "Calculate 25 plus 37 all divided by 2",
-        "What is 20 percent of 300?",
-        "sum of 5 and 3 multiplied by 2",
-        "How's the weather today?",
-        "Tell me about the Eiffel Tower",
-        "square root of (16 plus 9)",
-        "4 to the power of 3 minus 1"
-    ]
-    
-    for q in test_queries:
-        state = {"user_query": q}
-        result = math_agent(state)
-        print(f"{q} → {result['answer']}")
